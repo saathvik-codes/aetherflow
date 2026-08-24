@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AetherFlow - High-Performance Systems Storage Engine</title>
+    <meta name="description" content="AetherFlow is an enterprise-grade multi-threaded binary socket storage system featuring real-time telemetry, checksum integrity validation, and network pacing.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        :root {
+            --bg: #09090b;
+            --panel-bg: #121214;
+            --border: #222226;
+            --border-hover: #2d2d33;
+            
+            --text: #fafafa;
+            --text-muted: #8e8e93;
+            
+            --blue: #3b82f6;
+            --blue-dim: rgba(59, 130, 246, 0.1);
+            --green: #10b981;
+            --green-dim: rgba(16, 185, 129, 0.1);
+            --red: #ef4444;
+            --red-dim: rgba(239, 68, 68, 0.1);
+            --yellow: #f59e0b;
+            --yellow-dim: rgba(245, 158, 11, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding-bottom: 3rem;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2.5rem 1.5rem;
+        }
+
+        /* Top Header Navigation block */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .brand h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text);
+        }
+
+        .brand h1 i {
+            color: var(--blue);
+        }
+
+        .brand p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-top: 0.1rem;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.35rem 0.85rem;
+            background: #18181b;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: var(--red);
+        }
+
+        .status-dot.online {
+            background-color: var(--green);
+            box-shadow: 0 0 8px var(--green);
+        }
+
+        /* Grid stats row */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-bottom: 0.75rem;
+        }
+
+        .card-title-row i {
+            width: 16px;
+            height: 16px;
+            stroke-width: 2px;
+        }
+
+        .card-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text);
+        }
+
+        .ping-btn {
+            background: var(--blue-dim);
+            border: 1px solid var(--blue);
+            color: var(--blue);
+            padding: 0.3rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            margin-top: 0.5rem;
+            align-self: flex-start;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .ping-btn:hover {
+            background: var(--blue);
+            color: #fff;
+        }
+
+        /* Dual Column layouts */
+        .workspace-grid {
+            display: grid;
+            grid-template-columns: 1.6fr 1fr;
+            gap: 1.25rem;
+            margin-bottom: 1.25rem;
+        }
+
+        @media (max-width: 960px) {
+            .workspace-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin-bottom: 1rem;
+            color: var(--text);
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5rem;
+        }
+
+        .card-label i {
+            color: var(--text-muted);
+            width: 16px;
+            height: 16px;
+        }
+
+        .chart-wrapper {
+            height: 220px;
+            position: relative;
+        }
+
+        /* Drag & Drop uploader area */
+        .uploader-zone {
+            border: 1px dashed var(--border);
+            background: #0d0d0f;
+            border-radius: 6px;
+            padding: 2.5rem 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.15s ease, background 0.15s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 220px;
+        }
+
+        .uploader-zone:hover, .uploader-zone.dragover {
+            border-color: var(--blue);
+            background: rgba(59, 130, 246, 0.02);
+        }
+
+        .uploader-zone i {
+            color: var(--text-muted);
+            width: 32px;
+            height: 32px;
+            margin-bottom: 0.75rem;
+            stroke-width: 1.5px;
+        }
+
+        .uploader-zone h4 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .uploader-zone p {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Web Upload Progress Bar styling */
+        .progress-box {
+            width: 100%;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .progress-track {
+            background: #18181b;
+            border-radius: 9999px;
+            height: 6px;
+            overflow: hidden;
+            width: 100%;
+            margin-bottom: 0.35rem;
+            border: 1px solid var(--border);
+        }
+
+        .progress-fill {
+            background: var(--blue);
+            width: 0%;
+            height: 100%;
+            transition: width 0.1s ease;
+        }
+
+        .progress-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Storage File explorer listing */
+        .table-container {
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            padding: 0.6rem 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 0.7rem 0.75rem;
+            font-size: 0.85rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+            color: #e4e4e7;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.01);
+        }
+
+        .file-status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.75rem;
+            color: var(--green);
+            background: var(--green-dim);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .file-status-badge i {
+            width: 12px;
+            height: 12px;
+            stroke-width: 3px;
+        }
+
+        /* Systems console diagnostics logger window */
+        .terminal-panel {
+            background: #060608;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            height: 280px;
+            overflow-y: auto;
+            padding: 0.85rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            line-height: 1.6;
+        }
+
+        .log-row {
+            margin-bottom: 0.4rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+
+        .log-time {
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        .log-badge {
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 0.05rem 0.3rem;
+            border-radius: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            flex-shrink: 0;
+        }
+
+        .badge-info { background: var(--blue-dim); color: #93c5fd; }
+        .badge-success { background: var(--green-dim); color: #6ee7b7; }
+        .badge-warn { background: var(--yellow-dim); color: #fde047; }
+        .badge-error { background: var(--red-dim); color: #fca5a5; }
+
+        .log-text {
+            color: #d4d4d8;
+        }
+
+        .empty-placeholder {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 4rem 0;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Top Navigation -->
+        <header>
+            <div class="brand">
+                <h1><i data-lucide="cpu"></i> AetherFlow</h1>
+                <p>Systems Storage Daemon & Telemetry Engine Manager</p>
+            </div>
+            <div class="status-badge">
+                <div id="statusDot" class="status-dot"></div>
+                <span id="statusText">Awaiting connection...</span>
+            </div>
+        </header>
+
+        <!-- Stats Grid Cards -->
+        <div class="stats-grid">
+            <div class="card">
+                <div class="card-title-row">
+                    <span>DAEMON CORE PORT</span>
+                    <i data-lucide="radio"></i>
+                </div>
+                <div id="metricPort" class="card-value">--</div>
+            </div>
+            <div class="card">
+                <div class="card-title-row">
+                    <span>INGESTED STORAGE OBJECTS</span>
+                    <i data-lucide="files"></i>
+                </div>
+                <div id="metricFiles" class="card-value">0</div>
+            </div>
+            <div class="card">
+                <div class="card-title-row">
+                    <span>TOTAL BUFFER VOLUME</span>
+                    <i data-lucide="database"></i>
+                </div>
+                <div id="metricBytes" class="card-value">0 KB</div>
+            </div>
+            <div class="card">
+                <div class="card-title-row">
+                    <span>NODE LATENCY</span>
+                    <i data-lucide="activity"></i>
+                </div>
+                <div id="metricLatency" class="card-value" style="margin-bottom:0.25rem">-- ms</div>
+                <button class="ping-btn" onclick="pingCoreServer()">
+                    <i data-lucide="zap" style="width:12px;height:12px;"></i> Probe Network
+                </button>
+            </div>
+        </div>
+
+        <!-- Middle Column: Telemetry speed and Uploader -->
+        <div class="workspace-grid">
+            <div class="card">
+                <div class="card-label">
+                    <i data-lucide="trending-up"></i> Live Ingestion Throughput
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="speedChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-label">
+                    <i data-lucide="upload-cloud"></i> Packet Ingestion Gateway
+                </div>
+                <div class="uploader-zone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+                    <i data-lucide="file-down"></i>
+                    <h4>Ingest Local File</h4>
+                    <p>Drag file here or click to browse filesystem</p>
+                    <input type="file" id="fileInput" style="display:none" onchange="handleFileSelection(this.files)">
+                    
+                    <div class="progress-box" id="progressWrapper">
+                        <div class="progress-track">
+                            <div class="progress-fill" id="progressBarFill"></div>
+                        </div>
+                        <div class="progress-label">
+                            <span id="progressPercent">0%</span>
+                            <span id="progressBytes">0/0 KB</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Column: File manager and logs -->
+        <div class="workspace-grid">
+            <div class="card">
+                <div class="card-label">
+                    <i data-lucide="server"></i> Ingested Node Volumes
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Filename</th>
+                                <th>Byte Volume</th>
+                                <th>Ingestion Timestamp</th>
+                                <th>SHA-256 Signature</th>
+                                <th>Integrity</th>
+                            </tr>
+                        </thead>
+                        <tbody id="filesTableBody">
+                            <tr>
+                                <td colspan="4" class="empty-placeholder">No assets registered on disk. Stream data to register.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-label">
+                    <i data-lucide="terminal"></i> Storage Daemon Diagnostics
+                </div>
+                <div class="terminal-panel" id="consoleLog">
+                    <div class="log-row">
+                        <span class="log-time" id="initTime">--:--:--</span>
+                        <span class="log-badge badge-info">system</span>
+                        <span class="log-text">Diagnostics loader online. Awaiting system logs.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Init Lucide
+        lucide.createIcons();
+
+        // Print initial log timestamp
+        document.getElementById('initTime').textContent = new Date().toLocaleTimeString();
+
+        // Setup Chart
+        const ctx = document.getElementById('speedChart').getContext('2d');
+        const speedChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array(10).fill(''),
+                datasets: [{
+                    label: 'Transfer Rate (MB/s)',
+                    data: Array(10).fill(0),
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.03)',
+                    borderWidth: 1.5,
+                    pointRadius: 2,
+                    pointBackgroundColor: '#3b82f6',
+                    fill: true,
+                    tension: 0.35
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { 
+                        beginAtZero: true,
+                        grid: { color: '#1f1f23' },
+                        ticks: { color: '#8e8e93', font: { family: 'JetBrains Mono', size: 9 } }
+                    }
+                }
+            }
+        });
+
+        // Uploader dropzone hooks
+        const dropzone = document.getElementById('dropzone');
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('dragover');
+        });
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('dragover');
+        });
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            handleFileSelection(e.dataTransfer.files);
+        });
+
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
+        // Latency ping trigger
+        function pingCoreServer() {
+            const btn = document.querySelector('.ping-btn');
+            btn.innerHTML = `<i data-lucide="loader" class="animate-spin" style="width:12px;height:12px;"></i> Probing...`;
+            lucide.createIcons();
+            
+            fetch('/api/ping', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    btn.innerHTML = `<i data-lucide="zap" style="width:12px;height:12px;"></i> Probe Network`;
+                    lucide.createIcons();
+                    if (data.status === "success") {
+                        document.getElementById('metricLatency').textContent = data.rtt + " ms";
+                        appendConsoleLog(`Ping request verified with C++ Core. RTT = ${data.rtt}ms`, 'success');
+                    } else {
+                        document.getElementById('metricLatency').textContent = "error";
+                        appendConsoleLog(`Ping handshake rejected: ${data.message}`, 'error');
+                    }
+                })
+                .catch(err => {
+                    btn.innerHTML = `<i data-lucide="zap" style="width:12px;height:12px;"></i> Probe Network`;
+                    lucide.createIcons();
+                    document.getElementById('metricLatency').textContent = "offline";
+                    appendConsoleLog(`Ping timeout. Core storage node unreachable.`, 'error');
+                });
+        }
+
+        // Upload and translate client data stream
+        function handleFileSelection(files) {
+            if (!files || files.length === 0) return;
+            const file = files[0];
+            
+            const progressWrapper = document.getElementById('progressWrapper');
+            const progressFill = document.getElementById('progressBarFill');
+            const progressPercent = document.getElementById('progressPercent');
+            const progressBytes = document.getElementById('progressBytes');
+            
+            progressWrapper.style.display = 'block';
+            progressFill.style.width = '0%';
+            progressPercent.textContent = '0%';
+            progressBytes.textContent = `0/${formatBytes(file.size)}`;
+
+            appendConsoleLog(`Initiating RBFTP segment uploader: ${file.name} (${formatBytes(file.size)})`, 'info');
+
+            let lastLoaded = 0;
+            let lastTime = performance.now();
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', `/api/upload?filename=${encodeURIComponent(file.name)}`, true);
+            xhr.setRequestHeader('X-Filename', file.name);
+            xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+
+            xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable) {
+                    const percent = Math.round((e.loaded / e.total) * 100);
+                    progressFill.style.width = percent + '%';
+                    progressPercent.textContent = percent + '%';
+                    progressBytes.textContent = `${formatBytes(e.loaded)}/${formatBytes(e.total)}`;
+                    
+                    const now = performance.now();
+                    const elapsedMs = now - lastTime;
+                    if (elapsedMs > 200) { // Update chart every 200ms
+                        const bytesSent = e.loaded - lastLoaded;
+                        const speedMBs = (bytesSent / (1024 * 1024)) / (elapsedMs / 1000);
+                        
+                        updateSpeedChart(speedMBs);
+                        
+                        lastLoaded = e.loaded;
+                        lastTime = now;
+                    }
+                }
+            };
+
+            xhr.onload = () => {
+                updateSpeedChart(0);
+                if (xhr.status === 200) {
+                    progressFill.style.backgroundColor = 'var(--green)';
+                    appendConsoleLog(`File stream successful. Disk validation checks passed.`, 'success');
+                    setTimeout(() => { progressWrapper.style.display = 'none'; }, 2000);
+                    fetchTelemetryMetrics();
+                } else {
+                    const err = JSON.parse(xhr.responseText);
+                    progressFill.style.backgroundColor = 'var(--red)';
+                    appendConsoleLog(`Upload rejected by server: ${err.message}`, 'error');
+                }
+            };
+
+            xhr.onerror = () => {
+                updateSpeedChart(0);
+                progressFill.style.backgroundColor = 'var(--red)';
+                appendConsoleLog(`Network transfer terminated by proxy.`, 'error');
+            };
+
+            xhr.send(file);
+        }
+
+        function updateSpeedChart(speedMBs) {
+            const data = speedChart.data.datasets[0].data;
+            data.shift();
+            data.push(parseFloat(speedMBs.toFixed(2)));
+            speedChart.update();
+        }
+
+        // Tail server log telemetry
+        function appendConsoleLog(message, severity) {
+            const consoleLog = document.getElementById('consoleLog');
+            const logRow = document.createElement('div');
+            logRow.className = 'log-row';
+            
+            const timeStamp = new Date().toLocaleTimeString();
+            let badgeClass = 'badge-info';
+            let badgeText = 'info';
+            
+            if (severity === 'success') { badgeClass = 'badge-success'; badgeText = 'success'; }
+            if (severity === 'warn') { badgeClass = 'badge-warn'; badgeText = 'warning'; }
+            if (severity === 'error') { badgeClass = 'badge-error'; badgeText = 'error'; }
+            
+            logRow.innerHTML = `
+                <span class="log-time">${timeStamp}</span>
+                <span class="log-badge ${badgeClass}">${badgeText}</span>
+                <span class="log-text">${message}</span>
+            `;
+            
+            consoleLog.appendChild(logRow);
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+        }
+
+        // Ingest server telemetry metrics
+        function fetchTelemetryMetrics() {
+            fetch('/api/metrics')
+                .then(res => res.json())
+                .then(data => {
+                    const statusDot = document.getElementById('statusDot');
+                    const statusText = document.getElementById('statusText');
+                    
+                    if (data.status === "Online") {
+                        statusDot.className = "status-dot online";
+                        statusText.textContent = "CORE NODE CONNECTED";
+                        document.getElementById('metricPort').textContent = data.port;
+                    } else {
+                        statusDot.className = "status-dot";
+                        statusText.textContent = "CORE NODE OFFLINE";
+                        document.getElementById('metricPort').textContent = "--";
+                    }
+
+                    document.getElementById('metricFiles').textContent = data.file_count;
+                    document.getElementById('metricBytes').textContent = formatBytes(data.total_bytes);
+
+                    const consoleLog = document.getElementById('consoleLog');
+                    consoleLog.innerHTML = `
+                        <div class="log-row">
+                            <span class="log-time">${new Date().toLocaleTimeString()}</span>
+                            <span class="log-badge badge-info">system</span>
+                            <span class="log-text">Diagnostics loader online. Awaiting system logs.</span>
+                        </div>
+                    `;
+                    
+                    if (data.logs && data.logs.length > 0) {
+                        data.logs.forEach(log => {
+                            let severity = 'info';
+                            let cleanMsg = log;
+                            
+                            // Extract time from C++ log brackets
+                            let timePrefix = "";
+                            const timeMatch = log.match(/^\[(.*?)\]/);
+                            if (timeMatch) {
+                                // Just show the time portion, omit date for space
+                                timePrefix = timeMatch[1].split(' ')[1] || timeMatch[1];
+                                cleanMsg = log.substring(timeMatch[0].length).trim();
+                            }
+                            
+                            // Omit the server prefix if redundant
+                            if (cleanMsg.startsWith('[Server]')) {
+                                cleanMsg = cleanMsg.substring(8).trim();
+                            }
+
+                            if (cleanMsg.includes('Success') || cleanMsg.includes('complete') || cleanMsg.includes('Ingestion session') || cleanMsg.includes('Finished file ingestion')) severity = 'success';
+                            if (cleanMsg.includes('Warning') || cleanMsg.includes('disconnected')) severity = 'warn';
+                            if (cleanMsg.includes('Error') || cleanMsg.includes('Failed') || cleanMsg.includes('failed')) severity = 'error';
+                            
+                            let badgeClass = 'badge-info';
+                            let badgeText = 'info';
+                            if (severity === 'success') { badgeClass = 'badge-success'; badgeText = 'success'; }
+                            if (severity === 'warn') { badgeClass = 'badge-warn'; badgeText = 'warning'; }
+                            if (severity === 'error') { badgeClass = 'badge-error'; badgeText = 'error'; }
+
+                            const logRow = document.createElement('div');
+                            logRow.className = 'log-row';
+                            logRow.innerHTML = `
+                                <span class="log-time">${timePrefix || new Date().toLocaleTimeString()}</span>
+                                <span class="log-badge ${badgeClass}">${badgeText}</span>
+                                <span class="log-text">${cleanMsg}</span>
+                            `;
+                            consoleLog.appendChild(logRow);
+                        });
+                        consoleLog.scrollTop = consoleLog.scrollHeight;
+                    }
+                    // Auto-probe latency silently
+                    fetch('/api/ping', { method: 'POST' })
+                        .then(res => res.json())
+                        .then(pingData => {
+                            if (pingData.status === "success") {
+                                document.getElementById('metricLatency').textContent = pingData.rtt + " ms";
+                            }
+                        })
+                        .catch(() => {
+                            document.getElementById('metricLatency').textContent = "offline";
+                        });
+
+                    fetchFileList();
+                })
+                .catch(err => {
+                    const statusDot = document.getElementById('statusDot');
+                    const statusText = document.getElementById('statusText');
+                    statusDot.className = "status-dot";
+                    statusText.textContent = "GATEWAY OFFLINE";
+                });
+        }
+
+        function fetchFileList() {
+            fetch('/api/files')
+                .then(res => res.json())
+                .then(files => {
+                    const tableBody = document.getElementById('filesTableBody');
+                    tableBody.innerHTML = '';
+                    
+                    if (files && files.length > 0) {
+                        files.forEach(file => {
+                            const row = document.createElement('tr');
+                            const displayHash = file.hash && file.hash !== "unknown" ? file.hash.substring(0, 12) + "..." : "unknown";
+                            row.innerHTML = `
+                                <td style="font-weight: 600; color: #fff;">${file.name}</td>
+                                <td class="mono-text">${formatBytes(file.size)}</td>
+                                <td class="mono-text">${file.modified}</td>
+                                <td class="mono-text" title="${file.hash}" style="color: var(--text-muted); cursor: help;">${displayHash}</td>
+                                <td>
+                                    <span class="file-status-badge">
+                                        <i data-lucide="shield-check"></i> Verified
+                                    </span>
+                                </td>
+                            `;
+                            tableBody.appendChild(row);
+                        });
+                        lucide.createIcons();
+                    } else {
+                        tableBody.innerHTML = `
+                            <tr>
+                                <td colspan="5" class="empty-placeholder">No assets registered on disk. Stream data to register.</td>
+                            </tr>
+                        `;
+                    }
+                });
+        }
+
+        // Telemetry loop every 3.5s
+        setInterval(fetchTelemetryMetrics, 3500);
+        fetchTelemetryMetrics();
+    </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+# Compiled binaries
+*.exe
+server
+client
+*.o
+
+# Operational logs
+*.log
+
+# Storage uploads folder content (ignore data, keep folder structure)
+uploads/*
+!uploads/.gitkeep
