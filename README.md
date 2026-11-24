@@ -4,7 +4,7 @@ AetherFlow is a production-grade, high-performance distributed systems platform 
 
 ---
 
-## ⚡ Recruiter & Engineer Quick Reference
+## Recruiter & Engineer Quick Reference
 
 > [!NOTE]
 > **Why this project is relevant:**
@@ -23,7 +23,7 @@ This compiles the C++ binaries, clears conflicting socket ports, boots both core
 
 ---
 
-## 🔮 System Architecture & Packet Flow
+## System Architecture & Packet Flow
 
 The diagram below details how the client dashboard and API Gateway translate web uploads into low-level binary TCP socket frames.
 
@@ -58,7 +58,7 @@ sequenceDiagram
 
 ---
 
-## 🛠️ Technical Specifications
+## Technical Specifications
 
 ### 1. Custom RBFTP Binary Header Layout
 Every packet sent between the gateway and storage node consists of a strict **8-byte header** followed by a variable payload:
@@ -83,7 +83,7 @@ Every packet sent between the gateway and storage node consists of a strict **8-
 
 ---
 
-## 💻 Manual Developer Guide
+## Manual Developer Guide
 
 ### Command Line Interactive CLI (Alternative client)
 If you prefer not to use the web application, a terminal client CLI is available:
